@@ -12,31 +12,31 @@ resource "aws_vpc" "main" {
 }
 
 resource "aws_subnet" "public_subnets" {
- count      = length(var.public_subnet_cidrs)
- vpc_id     = aws_vpc.main.id
- cidr_block = element(var.public_subnet_cidrs, count.index)
- availability_zone = element(var.azs, count.index)
- 
- tags = {
-   Name = "Public Subnet ${count.index + 1}"
-   Environment = var.environment
-   Owner       = var.owner
-   ManagedBy   = var.managed_by
- }
+  count             = length(var.public_subnet_cidrs)
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = var.public_subnet_cidrs[count.index]
+  availability_zone = var.azs[count.index]
+
+  tags = {
+    Name        = "Public Subnet ${count.index + 1}"
+    Environment = var.environment
+    Owner       = var.owner
+    ManagedBy   = var.managed_by
+  }
 }
- 
+
 resource "aws_subnet" "private_subnets" {
- count      = length(var.private_subnet_cidrs)
- vpc_id     = aws_vpc.main.id
- cidr_block = element(var.private_subnet_cidrs, count.index)
- availability_zone = element(var.azs, count.index)
- 
- tags = {
-   Name = "Private Subnet ${count.index + 1}"
-   Environment = var.environment
-   Owner       = var.owner
-   ManagedBy   = var.managed_by
- }
+  count             = length(var.private_subnet_cidrs)
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = var.private_subnet_cidrs[count.index]
+  availability_zone = var.azs[count.index]
+
+  tags = {
+    Name        = "Private Subnet ${count.index + 1}"
+    Environment = var.environment
+    Owner       = var.owner
+    ManagedBy   = var.managed_by
+  }
 }
 
 resource "aws_internet_gateway" "gw" {
@@ -49,7 +49,6 @@ resource "aws_internet_gateway" "gw" {
     ManagedBy   = var.managed_by
   }
 }
-
 
 resource "aws_route_table" "rt_public" {
   vpc_id = aws_vpc.main.id
@@ -70,8 +69,8 @@ resource "aws_route_table" "rt_public" {
 resource "aws_route_table_association" "public" {
   count = length(var.public_subnet_cidrs)
 
-  subnet_id      = aws_subnet.public[count.index].id
-  route_table_id = aws_route_table.public.id
+  subnet_id      = aws_subnet.public_subnets[count.index].id
+  route_table_id = aws_route_table.rt_public.id
 }
 
 resource "aws_route_table" "private" {
@@ -90,6 +89,6 @@ resource "aws_route_table" "private" {
 resource "aws_route_table_association" "private" {
   count = length(var.private_subnet_cidrs)
 
-  subnet_id      = aws_subnet.private[count.index].id
+  subnet_id      = aws_subnet.private_subnets[count.index].id
   route_table_id = aws_route_table.private[count.index].id
 }
