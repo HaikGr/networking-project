@@ -52,12 +52,7 @@ pipeline {
 
                     rm -rf .terraform
 
-                    terraform init \
-                        -backend=false \
-                        -input=false
-
-                    terraform providers
-
+                    terraform init -backend=false -input=false
                     terraform validate
                 '''
             }
