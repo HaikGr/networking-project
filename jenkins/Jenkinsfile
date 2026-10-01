@@ -1,76 +1,217 @@
 pipeline {
+
     agent {
         docker {
             image 'hashicorp/terraform:1.7.0'
-            args  '-v /var/run/docker.sock:/var/run/docker.sock'
         }
+    }
+
+    options {
+        // Prevent two Terraform operations from running against the same state
+        disableConcurrentBuilds()
+
+        // Add timestamps to Jenkins logs
+        timestamps()
+
+        // Prevent a stuck pipeline from running forever
+        timeout(time: 45, unit: 'MINUTES')
+
+        // We explicitly checkout SCM ourselves
+        skipDefaultCheckout(true)
+    }
+
+    parameters {
+        choice(
+            name: 'ACTION',
+            choices: ['APPLY', 'DESTROY'],
+            description: 'Choose whether Terraform should apply changes or destroy the infrastructure.'
+        )
+
+        string(
+            name: 'DESTROY_CONFIRM',
+            defaultValue: '',
+            description: 'Required only for DESTROY. Type DESTROY exactly.'
+        )
     }
 
     environment {
         TF_IN_AUTOMATION = 'true'
-        AWS_ACCESS_KEY_ID     = credentials('aws-access-key-id')
+
+        AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')
         AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 cleanWs()
+
                 checkout scm
+            }
+        }
+
+        stage('Validate Parameters') {
+            steps {
+                script {
+                    if (params.ACTION == 'DESTROY' &&
+                        params.DESTROY_CONFIRM != 'DESTROY') {
+
+                        error(
+                            'DESTROY selected, but DESTROY_CONFIRM is not exactly "DESTROY".'
+                        )
+                    }
+                }
             }
         }
 
         stage('Terraform Lint & Validate') {
             steps {
-                // Formatting check ensures team code style stays unified
-                sh 'terraform fmt -check'
-                sh 'terraform init -backend=false'
-                sh 'terraform validate'
+
+                // Check formatting recursively
+                sh '''
+                    terraform fmt -check -recursive
+                '''
+
+                // Validate Terraform configuration without contacting backend
+                sh '''
+                    terraform init \
+                        -backend=false \
+                        -input=false
+                '''
+
+                sh '''
+                    terraform validate
+                '''
             }
         }
 
         stage('Terraform Init') {
             steps {
-                // Initialize with real backend storage configurations
-                sh 'terraform init -input=false'
+
+                sh '''
+                    terraform init \
+                        -input=false \
+                        -lock-timeout=5m
+                '''
             }
         }
 
         stage('Terraform Plan') {
             steps {
-                // Save execution plan explicitly to an artifact file
-                sh 'terraform plan -input=false -out=tfplan'
+
+                script {
+
+                    if (params.ACTION == 'DESTROY') {
+
+                        echo 'Generating DESTROY plan...'
+
+                        sh '''
+                            terraform plan \
+                                -destroy \
+                                -input=false \
+                                -lock-timeout=5m \
+                                -out=tfplan
+                        '''
+
+                    } else {
+
+                        echo 'Generating APPLY plan...'
+
+                        sh '''
+                            terraform plan \
+                                -input=false \
+                                -lock-timeout=5m \
+                                -out=tfplan
+                        '''
+                    }
+                }
+
+                // Show exactly what is stored in tfplan
+                sh '''
+                    terraform show -no-color tfplan
+                '''
+
+                // Preserve exact plan for execution
+                stash(
+                    name: 'terraform-plan',
+                    includes: 'tfplan',
+                    useDefaultExcludes: false
+                )
             }
         }
 
         stage('Manual Approval Gate') {
-            // Evaluated outside of the agent container so it doesn't tie up a worker node while waiting
-            agent none 
+
+            // Don't occupy a Jenkins executor while waiting
+            agent none
+
+            options {
+                timeout(time: 15, unit: 'MINUTES')
+            }
+
             steps {
-                input message: "Does the generated plan look correct? Review the log above before approving.", 
-                      ok: "Apply Changes"
+                script {
+
+                    def operation = params.ACTION == 'DESTROY'
+                        ? 'DESTROY infrastructure'
+                        : 'APPLY infrastructure changes'
+
+                    input(
+                        message: "The Terraform plan has been generated. Proceed with ${operation}?",
+                        ok: params.ACTION == 'DESTROY'
+                            ? 'DESTROY'
+                            : 'APPLY CHANGES'
+                    )
+                }
             }
         }
 
-        stage('Terraform Apply') {
+        stage('Terraform Execute') {
+
             steps {
-                // Target the exact plan generated earlier. Does not need auto-approve flag when a file is passed.
-                sh 'terraform apply -input=false tfplan'
+
+                // Workspace may have changed after agent none,
+                // so restore the source and exact saved plan.
+                cleanWs()
+
+                checkout scm
+
+                // Providers must exist before applying a saved plan.
+                sh '''
+                    terraform init \
+                        -input=false \
+                        -lock-timeout=5m
+                '''
+
+                unstash 'terraform-plan'
+
+                echo "Executing Terraform ${params.ACTION}..."
+
+                // Important:
+                // The exact saved plan is executed.
+                // For a destroy plan, this performs the destroy.
+                sh '''
+                    terraform apply \
+                        -input=false \
+                        tfplan
+                '''
             }
         }
     }
 
     post {
+
         always {
-            // Good hygiene: eradicate local plan configurations and sensitive tokens from node storage
             cleanWs()
         }
+
         success {
-            echo "Infrastructure updated successfully!"
-            // Add your Slack / Email notification webhooks here
+            echo "Terraform ${params.ACTION} completed successfully."
         }
+
         failure {
-            echo "Pipeline failed. Review the logs for syntax errors, misconfigurations, or permission blocks."
+            echo "Terraform pipeline failed. Review the Jenkins logs."
         }
     }
 }
