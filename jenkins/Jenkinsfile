@@ -1,0 +1,76 @@
+pipeline {
+    agent {
+        docker {
+            image 'hashicorp/terraform:1.7.0'
+            args  '-v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
+
+    environment {
+        TF_IN_AUTOMATION = 'true'
+        AWS_ACCESS_KEY_ID     = credentials('aws-access-key-id')
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                cleanWs()
+                checkout scm
+            }
+        }
+
+        stage('Terraform Lint & Validate') {
+            steps {
+                // Formatting check ensures team code style stays unified
+                sh 'terraform fmt -check'
+                sh 'terraform init -backend=false'
+                sh 'terraform validate'
+            }
+        }
+
+        stage('Terraform Init') {
+            steps {
+                // Initialize with real backend storage configurations
+                sh 'terraform init -input=false'
+            }
+        }
+
+        stage('Terraform Plan') {
+            steps {
+                // Save execution plan explicitly to an artifact file
+                sh 'terraform plan -input=false -out=tfplan'
+            }
+        }
+
+        stage('Manual Approval Gate') {
+            // Evaluated outside of the agent container so it doesn't tie up a worker node while waiting
+            agent none 
+            steps {
+                input message: "Does the generated plan look correct? Review the log above before approving.", 
+                      ok: "Apply Changes"
+            }
+        }
+
+        stage('Terraform Apply') {
+            steps {
+                // Target the exact plan generated earlier. Does not need auto-approve flag when a file is passed.
+                sh 'terraform apply -input=false tfplan'
+            }
+        }
+    }
+
+    post {
+        always {
+            // Good hygiene: eradicate local plan configurations and sensitive tokens from node storage
+            cleanWs()
+        }
+        success {
+            echo "Infrastructure updated successfully!"
+            // Add your Slack / Email notification webhooks here
+        }
+        failure {
+            echo "Pipeline failed. Review the logs for syntax errors, misconfigurations, or permission blocks."
+        }
+    }
+}
