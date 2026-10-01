@@ -1,11 +1,8 @@
 pipeline {
 
-    agent {
-        docker {
-            image 'hashicorp/terraform:1.16.0'
-        }
-    }
+    agent any
 
+    
     options {
         disableConcurrentBuilds()
         timestamps()
