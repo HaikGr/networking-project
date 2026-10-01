@@ -11,24 +11,6 @@ resource "aws_vpc" "main" {
   }
 }
 
-# resource "aws_subnet" "public" {
-
-#   for_each = var.availability_zones
-
-#   vpc_id            = aws_vpc.main.id
-#   availability_zone = each.key
-  
-#   cidr_block        = cidrsubnet(aws_vpc.main.cidr_block, 8, each.value)
-
-#   tags = {
-#     Name = "public-subnet-${each.key}"
-#     Environment = var.environment
-#     Owner       = var.owner
-#     ManagedBy   = var.managed_by
-#   }
-# }
-
-
 resource "aws_subnet" "public_subnets" {
  count      = length(var.public_subnet_cidrs)
  vpc_id     = aws_vpc.main.id
@@ -85,11 +67,29 @@ resource "aws_route_table" "rt_public" {
   }
 }
 
-resource "aws_route_table_association" "stw_rta_public_1" {
-  subnet_id      = aws_subnet.stw_subnet_public_1.id
-  route_table_id = aws_route_table.stw_rt_public.id
+resource "aws_route_table_association" "public" {
+  count = length(var.public_subnet_cidrs)
+
+  subnet_id      = aws_subnet.public[count.index].id
+  route_table_id = aws_route_table.public.id
 }
-resource "aws_route_table_association" "stw_rta_public_2" {
-  subnet_id      = aws_subnet.stw_subnet_public_2.id
-  route_table_id = aws_route_table.stw_rt_public.id
+
+resource "aws_route_table" "private" {
+  count = length(var.azs)
+
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name        = "${var.name}-private-rt-${var.azs[count.index]}"
+    Environment = var.environment
+    Owner       = var.owner
+    ManagedBy   = var.managed_by
+  }
+}
+
+resource "aws_route_table_association" "private" {
+  count = length(var.private_subnet_cidrs)
+
+  subnet_id      = aws_subnet.private[count.index].id
+  route_table_id = aws_route_table.private[count.index].id
 }

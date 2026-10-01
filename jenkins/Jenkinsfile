@@ -2,21 +2,14 @@ pipeline {
 
     agent {
         docker {
-            image 'hashicorp/terraform:1.7.0'
+            image 'hashicorp/terraform:1.16.0'
         }
     }
 
     options {
-        // Prevent two Terraform operations from running against the same state
         disableConcurrentBuilds()
-
-        // Add timestamps to Jenkins logs
         timestamps()
-
-        // Prevent a stuck pipeline from running forever
         timeout(time: 45, unit: 'MINUTES')
-
-        // We explicitly checkout SCM ourselves
         skipDefaultCheckout(true)
     }
 
@@ -24,13 +17,13 @@ pipeline {
         choice(
             name: 'ACTION',
             choices: ['APPLY', 'DESTROY'],
-            description: 'Choose whether Terraform should apply changes or destroy the infrastructure.'
+            description: 'Choose Terraform operation.'
         )
 
         string(
             name: 'DESTROY_CONFIRM',
             defaultValue: '',
-            description: 'Required only for DESTROY. Type DESTROY exactly.'
+            description: 'For DESTROY, type DESTROY exactly.'
         )
     }
 
@@ -41,64 +34,54 @@ pipeline {
         AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
     }
 
+
     stages {
 
         stage('Checkout') {
             steps {
                 cleanWs()
-
                 checkout scm
             }
         }
 
-        stage('Validate Parameters') {
+        stage('Terraform fmt -check') {
             steps {
-                script {
-                    if (params.ACTION == 'DESTROY' &&
-                        params.DESTROY_CONFIRM != 'DESTROY') {
-
-                        error(
-                            'DESTROY selected, but DESTROY_CONFIRM is not exactly "DESTROY".'
-                        )
-                    }
-                }
+                sh 'terraform fmt -check -recursive'
             }
         }
 
-        stage('Terraform Lint & Validate') {
+        stage('Terraform validate') {
             steps {
 
-                // Check formatting recursively
-                sh '''
-                    terraform fmt -check -recursive
-                '''
-
-                // Validate Terraform configuration without contacting backend
                 sh '''
                     terraform init \
                         -backend=false \
                         -input=false
                 '''
 
-                sh '''
-                    terraform validate
-                '''
+                sh 'terraform validate'
             }
         }
 
-        stage('Terraform Init') {
+        stage('Terraform plan') {
             steps {
+
+                script {
+
+                    if (params.ACTION == 'DESTROY' &&
+                        params.DESTROY_CONFIRM != 'DESTROY') {
+
+                        error(
+                            'DESTROY selected, but DESTROY_CONFIRM is not exactly DESTROY.'
+                        )
+                    }
+                }
 
                 sh '''
                     terraform init \
                         -input=false \
                         -lock-timeout=5m
                 '''
-            }
-        }
-
-        stage('Terraform Plan') {
-            steps {
 
                 script {
 
@@ -127,23 +110,28 @@ pipeline {
                     }
                 }
 
-                // Show exactly what is stored in tfplan
                 sh '''
-                    terraform show -no-color tfplan
+                    terraform show \
+                        -no-color \
+                        tfplan > tfplan.txt
                 '''
 
-                // Preserve exact plan for execution
+                sh 'cat tfplan.txt'
+
+                archiveArtifacts(
+                    artifacts: 'tfplan,tfplan.txt',
+                    fingerprint: true
+                )
+
                 stash(
                     name: 'terraform-plan',
-                    includes: 'tfplan',
-                    useDefaultExcludes: false
+                    includes: 'tfplan'
                 )
             }
         }
 
-        stage('Manual Approval Gate') {
+        stage('Manual Approval') {
 
-            // Don't occupy a Jenkins executor while waiting
             agent none
 
             options {
@@ -151,14 +139,16 @@ pipeline {
             }
 
             steps {
+
                 script {
 
-                    def operation = params.ACTION == 'DESTROY'
-                        ? 'DESTROY infrastructure'
-                        : 'APPLY infrastructure changes'
+                    def operation =
+                        params.ACTION == 'DESTROY'
+                        ? 'DESTROY the infrastructure'
+                        : 'APPLY the infrastructure changes'
 
                     input(
-                        message: "The Terraform plan has been generated. Proceed with ${operation}?",
+                        message: "Read the Terraform plan above. Do you want to ${operation}?",
                         ok: params.ACTION == 'DESTROY'
                             ? 'DESTROY'
                             : 'APPLY CHANGES'
@@ -167,17 +157,13 @@ pipeline {
             }
         }
 
-        stage('Terraform Execute') {
-
+        stage('Terraform apply saved plan') {
             steps {
 
-                // Workspace may have changed after agent none,
-                // so restore the source and exact saved plan.
                 cleanWs()
 
                 checkout scm
 
-                // Providers must exist before applying a saved plan.
                 sh '''
                     terraform init \
                         -input=false \
@@ -186,11 +172,6 @@ pipeline {
 
                 unstash 'terraform-plan'
 
-                echo "Executing Terraform ${params.ACTION}..."
-
-                // Important:
-                // The exact saved plan is executed.
-                // For a destroy plan, this performs the destroy.
                 sh '''
                     terraform apply \
                         -input=false \
@@ -211,7 +192,7 @@ pipeline {
         }
 
         failure {
-            echo "Terraform pipeline failed. Review the Jenkins logs."
+            echo "Terraform pipeline failed."
         }
     }
 }
