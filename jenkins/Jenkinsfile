@@ -2,7 +2,10 @@ pipeline {
 
     agent any
 
-    
+    tools {
+        terraform 'terraform'
+    }
+
     options {
         disableConcurrentBuilds()
         timestamps()
