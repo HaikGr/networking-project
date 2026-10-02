@@ -46,7 +46,10 @@ pipeline {
 
         stage('Terraform diagnostics') {
             steps {
-                sh '''
+                sh '''   
+                    aws sts get-caller-identity
+                    aws s3api head-object --bucket terraform-state-bucket-haik --key main/networking/terraform.tfstate
+
                     terraform version
                     uname -m
 
