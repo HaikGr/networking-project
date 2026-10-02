@@ -53,6 +53,22 @@ pipeline {
                     rm -rf .terraform
 
                     terraform init -backend=false -input=false
+
+                    echo "=== SYSTEM ==="
+                    uname -a
+                    uname -m
+                    terraform version
+
+                    echo "=== AWS PROVIDER ==="
+                    find .terraform/providers -type f -name 'terraform-provider-aws*' -exec ls -lh {} \;
+                    find .terraform/providers -type f -name 'terraform-provider-aws*' -exec file {} \;
+
+                    echo "=== PERMISSIONS ==="
+                    find .terraform/providers -type f -name 'terraform-provider-aws*' -exec stat -c '%A %a %n' {} \;
+
+                    echo "=== WORKSPACE MOUNT ==="
+                    mount | grep "$WORKSPACE" || true
+                    
                     terraform validate
                 '''
             }
