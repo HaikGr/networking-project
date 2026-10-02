@@ -59,7 +59,7 @@ resource "aws_route_table" "rt_public" {
   }
 
   tags = {
-    Name        = var.name
+    Name        = "${var.name}-public-rt-${var.azs[count.index]}"
     Environment = var.environment
     Owner       = var.owner
     ManagedBy   = var.managed_by
