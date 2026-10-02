@@ -47,29 +47,34 @@ pipeline {
         stage('Terraform diagnostics') {
             steps {
                 sh '''
-                    terraform version
-                    uname -m
+                    set -eux
 
-                    rm -rf .terraform
-
-                    terraform init -backend=false -input=false
-
-                    echo "=== SYSTEM ==="
-                    uname -a
-                    uname -m
+                    echo "=== Terraform version ==="
                     terraform version
 
-                    echo "=== AWS PROVIDER ==="
-                    find .terraform/providers -type f -name 'terraform-provider-aws*' -exec ls -lh {} \;
-                    find .terraform/providers -type f -name 'terraform-provider-aws*' -exec file {} \;
+                    echo "=== Provider binaries ==="
+                    find .terraform/providers -type f -name 'terraform-provider-aws*' -ls || true
 
-                    echo "=== PERMISSIONS ==="
-                    find .terraform/providers -type f -name 'terraform-provider-aws*' -exec stat -c '%A %a %n' {} \;
+                    echo "=== Provider architecture ==="
+                    find .terraform/providers -type f -name 'terraform-provider-aws*' -print | while read f; do
+                        file "$f"
+                    done
 
-                    echo "=== WORKSPACE MOUNT ==="
+                    echo "=== System architecture ==="
+                    uname -m
+
+                    echo "=== Workspace mount ==="
                     mount | grep "$WORKSPACE" || true
-                    
-                    terraform validate
+
+                    echo "=== Disk ==="
+                    df -h
+                    df -ih
+
+                    echo "=== Memory ==="
+                    free -h
+
+                    echo "=== Terraform validate ==="
+                    TF_LOG=DEBUG terraform validate
                 '''
             }
         }
