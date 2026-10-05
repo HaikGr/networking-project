@@ -1,4 +1,3 @@
-
 variable "environment" {
   type        = string
   description = "Environment of this file."
@@ -25,19 +24,24 @@ variable "cidr" {
     default = "10.0.0.0/16"
 }
 
-variable "azs" {
-    type = list(string)
+variable "az" {
+    type = string
     description = "A list of availability zones names or ids in the region."
 }
 
-variable "public_subnet_cidrs" {
- type        = list(string)
+variable "public_subnet_cidr" {
+ type        = string
  description = "Public Subnet CIDR values."
- default     = ["10.0.1.0/24", "10.0.2.0/24"]
+ default     = "10.0.1.0/24"
 }
  
-variable "private_subnet_cidrs" {
- type        = list(string)
+variable "private_subnet_cidr" {
+ type        = string
  description = "Private Subnet CIDR values."
- default     = ["10.0.3.0/24", "10.0.4.0/24"]
+ default     = "10.0.2.0/24"
+}
+
+variable "nat_instance_network_interface_id" {
+    type = string
+    description = "EC2 nat instance id for route table"
 }

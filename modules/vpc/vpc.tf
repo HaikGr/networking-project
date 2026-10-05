@@ -11,28 +11,28 @@ resource "aws_vpc" "main" {
   }
 }
 
-resource "aws_subnet" "public_subnets" {
-  count             = length(var.public_subnet_cidrs)
+resource "aws_subnet" "public_subnet" {
+  # count             = length(var.public_subnet_cidrs).  changed to be one
   vpc_id            = aws_vpc.main.id
-  cidr_block        = var.public_subnet_cidrs[count.index]
-  availability_zone = var.azs[count.index]
+  cidr_block        = var.public_subnet_cidr
+  availability_zone = var.az
 
   tags = {
-    Name        = "Public Subnet ${count.index + 1}"
+    Name        = "${var.name}-public-sn-${var.az}"
     Environment = var.environment
     Owner       = var.owner
     ManagedBy   = var.managed_by
   }
 }
 
-resource "aws_subnet" "private_subnets" {
-  count             = length(var.private_subnet_cidrs)
+resource "aws_subnet" "private_subnet" {
+  # count             = length(var.private_subnet_cidrs).  changed to be one
   vpc_id            = aws_vpc.main.id
-  cidr_block        = var.private_subnet_cidrs[count.index]
-  availability_zone = var.azs[count.index]
+  cidr_block        = var.private_subnet_cidr
+  availability_zone = var.az
 
   tags = {
-    Name        = "Private Subnet ${count.index + 1}"
+    Name        = "${var.name}-private-sn-${var.az}"
     Environment = var.environment
     Owner       = var.owner
     ManagedBy   = var.managed_by
@@ -43,7 +43,7 @@ resource "aws_internet_gateway" "gw" {
   vpc_id = aws_vpc.main.id
 
   tags = {
-    Name        = var.name
+    Name        = "${var.name}-gw-${var.az}"
     Environment = var.environment
     Owner       = var.owner
     ManagedBy   = var.managed_by
@@ -51,7 +51,7 @@ resource "aws_internet_gateway" "gw" {
 }
 
 resource "aws_route_table" "rt_public" {
-  count = length(var.azs)
+  # count = length(var.azs) changed to one az
 
   vpc_id = aws_vpc.main.id
 
@@ -61,7 +61,7 @@ resource "aws_route_table" "rt_public" {
   }
 
   tags = {
-    Name        = "${var.name}-public-rt-${var.azs[count.index]}"
+    Name        = "${var.name}-public-rt-${var.az}"
     Environment = var.environment
     Owner       = var.owner
     ManagedBy   = var.managed_by
@@ -69,19 +69,25 @@ resource "aws_route_table" "rt_public" {
 }
 
 resource "aws_route_table_association" "public" {
-  count = length(var.public_subnet_cidrs)
+  # count = length(var.public_subnet_cidrs).  changed to be one
 
-  subnet_id      = aws_subnet.public_subnets[count.index].id
-  route_table_id = aws_route_table.rt_public[count.index].id
+  subnet_id      = aws_subnet.public_subnet.id
+  route_table_id = aws_route_table.rt_public.id
 }
 
 resource "aws_route_table" "private" {
-  count = length(var.azs)
+  # count = length(var.azs)
 
   vpc_id = aws_vpc.main.id
 
+  route {
+    cidr_block  = "0.0.0.0/0"
+    network_interface_id = var.nat_instance_network_interface_id
+  }
+
+
   tags = {
-    Name        = "${var.name}-private-rt-${var.azs[count.index]}"
+    Name        = "${var.name}-private-rt-${var.az}"
     Environment = var.environment
     Owner       = var.owner
     ManagedBy   = var.managed_by
@@ -89,8 +95,8 @@ resource "aws_route_table" "private" {
 }
 
 resource "aws_route_table_association" "private" {
-  count = length(var.private_subnet_cidrs)
+  # count = length(var.private_subnet_cidrs)
 
-  subnet_id      = aws_subnet.private_subnets[count.index].id
-  route_table_id = aws_route_table.private[count.index].id
+  subnet_id      = aws_subnet.private_subnet.id
+  route_table_id = aws_route_table.private.id
 }
