@@ -34,7 +34,7 @@ module "endpoints" {
 
     vpc_id = module.network.vpc_id
 
-    private_route_table_ids = module.network.private_rt_id
+    private_route_table_ids = [module.network.private_rt_id]
 
     s3_bucket_arns = [
     data.aws_ssm_parameter.s3_bucket_arn.value
