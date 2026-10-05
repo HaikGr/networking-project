@@ -1,16 +1,8 @@
-data "aws_region" "current" {}
 
-data "aws_ssm_parameter" "s3_bucket_arn" {
-  name = "/networking/${var.environment}/data/s3-bucket-arn"
-}
-
-data "aws_ssm_parameter" "dynamodb_table_arn" {
-  name = "/networking/${var.environment}/data/dynamodb-table-arn"
-}
 
 resource "aws_vpc_endpoint" "s3" {
   vpc_id            = var.vpc_id
-  service_name      = "com.amazonaws.${data.aws_region.current.name}.s3"
+  service_name      = "com.amazonaws.us-east-1.s3"
   vpc_endpoint_type = "Gateway"
 
   route_table_ids = var.private_route_table_ids
@@ -52,7 +44,7 @@ resource "aws_vpc_endpoint" "s3" {
 
 resource "aws_vpc_endpoint" "dynamodb" {
   vpc_id            = var.vpc_id
-  service_name      = "com.amazonaws.${data.aws_region.current.name}.dynamodb"
+  service_name      = "com.amazonaws.us-east-1.dynamodb"
   vpc_endpoint_type = "Gateway"
 
   route_table_ids = var.private_route_table_ids

@@ -1,5 +1,3 @@
-data "aws_region" "current" {}
-
 data "aws_ssm_parameter" "s3_bucket_arn" {
   name = "/networking/dev/data/s3-bucket-arn"
 }
