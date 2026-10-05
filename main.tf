@@ -27,6 +27,9 @@ module "egress" {
     private_subnet_cidr = module.network.private_subnet_cidr
     vpc_id = module.network.vpc_id
     public_subnet_id = module.network.public_subnet_id
+
+    key_name = "nat-instance-key"
+    admin_cidr = "178.160.196.42/32"
 }
 
 module "endpoints" {

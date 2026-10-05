@@ -8,6 +8,8 @@ resource "aws_instance" "nat_instance" {
   subnet_id                   = var.public_subnet_id
   vpc_security_group_ids      = [aws_security_group.nat_instance.id]
 
+  key_name = var.key_name
+
   source_dest_check = false
   
   user_data = <<-EOF

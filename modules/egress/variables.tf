@@ -32,3 +32,13 @@ variable "public_subnet_id" {
     type = string
     description = "Id of public subnets created via vpc module"
 }
+
+variable "key_name" {
+  type        = string
+  description = "Existing EC2 key pair name used for SSH access."
+}
+
+variable "admin_cidr" {
+  type        = string
+  description = "Trusted public IP CIDR allowed to SSH to the NAT instance."
+}
