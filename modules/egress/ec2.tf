@@ -4,43 +4,48 @@ data "aws_ssm_parameter" "al2023" {
 
 resource "aws_instance" "nat_instance" {
   ami                         = data.aws_ssm_parameter.al2023.value
-  instance_type               = "t3.nano"
+  instance_type               = "t3.micro"
   subnet_id                   = var.public_subnet_id
   vpc_security_group_ids      = [aws_security_group.nat_instance.id]
+  key_name                    = var.key_name
 
-  key_name = var.key_name
+  source_dest_check           = false
+  associate_public_ip_address = true   # internet at first boot, before the EIP attaches
+  user_data_replace_on_change = true   # re-run user_data when the script changes
 
-  source_dest_check = false
-  
   user_data = <<-EOF
     #!/bin/bash
     set -eux
+    exec > >(tee /var/log/user-data.log) 2>&1
 
-    # Install iptables persistence support
-    dnf install -y iptables-services
-
-    # Enable IPv4 forwarding permanently
-    cat > /etc/sysctl.d/99-nat.conf <<'SYSCTL'
-    net.ipv4.ip_forward = 1
-    SYSCTL
-
+    # 1. Enable IPv4 forwarding (persistent + immediate)
+    echo "net.ipv4.ip_forward = 1" > /etc/sysctl.d/99-nat.conf
     sysctl --system
 
-    # Detect the primary network interface
-    IFACE=$(ip route get 8.8.8.8 | awk '{print $5; exit}')
+    # 2. Find the primary interface from the default route (retry until network is up)
+    IFACE=""
+    for i in $(seq 1 30); do
+      IFACE=$(ip -o -4 route show to default | awk '{for(i=1;i<=NF;i++) if ($i=="dev") {print $(i+1); exit}}')
+      [ -n "$IFACE" ] && break
+      sleep 2
+    done
+    [ -n "$IFACE" ]
 
-    # Configure NAT / masquerading
-    iptables -t nat -A POSTROUTING -o "$IFACE" -j MASQUERADE
+    # 3. NAT rule first (idempotent)
+    iptables -t nat -C POSTROUTING -o "$IFACE" -j MASQUERADE 2>/dev/null || \
+      iptables -t nat -A POSTROUTING -o "$IFACE" -j MASQUERADE
 
-    # Persist firewall rules
+    # 4. Persist rules (retry the install in case networking is slow)
+    for i in $(seq 1 10); do
+      dnf install -y iptables-services && break
+      sleep 15
+    done
     iptables-save > /etc/sysconfig/iptables
-
-    systemctl enable iptables
-    systemctl start iptables
+    systemctl enable --now iptables
   EOF
 
   tags = {
-    Name        = "${var.name}"
+    Name        = var.name
     Environment = var.environment
     Owner       = var.owner
     ManagedBy   = var.managed_by
