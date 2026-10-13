@@ -103,8 +103,8 @@ resource "aws_route_table_association" "private" {
 
 resource "aws_ssm_parameter" "private_subnet_ids" {
   name  = "/networking/${var.environment}/data/private_subnet_ids"
-  type  = "StringList"
-  value = join(",", aws_subnet.private_subnet.id)
+  type  = "String"
+  value = aws_subnet.private_subnet.id
 }
 
 resource "aws_ssm_parameter" "vpc_id" {
