@@ -1,3 +1,13 @@
+data "aws_region" "current" {}
+
+data "aws_prefix_list" "s3" {
+  name = "com.amazonaws.${data.aws_region.current.name}.s3"
+}
+
+data "aws_prefix_list" "dynamodb" {
+  name = "com.amazonaws.${data.aws_region.current.name}.dynamodb"
+}
+
 data "aws_ssm_parameter" "s3_bucket_arn" {
   name = "/networking/dev/data/s3-bucket-arn"
 }

@@ -74,7 +74,7 @@ resource "aws_security_group" "indexer" {
     protocol        = "tcp"
     from_port       = 443
     to_port         = 443
-    prefix_list_ids = [var.s3_bucket_id]
+    prefix_list_ids = [data.aws_prefix_list.s3.id]
   }
 
   egress {
@@ -82,7 +82,7 @@ resource "aws_security_group" "indexer" {
     protocol        = "tcp"
     from_port       = 443
     to_port         = 443
-    prefix_list_ids = [var.dynamodb_table_id]
+    prefix_list_ids = [data.aws_prefix_list.dynamodb.id]
   }
 
   tags = {
