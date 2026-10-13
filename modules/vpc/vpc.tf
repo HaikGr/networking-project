@@ -169,6 +169,6 @@ resource "aws_flow_log" "vpc" {
   traffic_type              = "ALL"
   log_destination_type      = "cloud-watch-logs"
   log_destination           = aws_cloudwatch_log_group.vpc_flow_logs.arn
-  iam_role_arn              = aws_iam_role.vpc_flow_logs.arn
+  iam_role_arn              = aws_iam_role.iam_for_vpc.arn
   max_aggregation_interval  = 60
 }
