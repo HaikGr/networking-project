@@ -100,3 +100,22 @@ resource "aws_route_table_association" "private" {
   subnet_id      = aws_subnet.private_subnet.id
   route_table_id = aws_route_table.private.id
 }
+
+
+resource "aws_ssm_parameter" "private_subnet_ids" {
+  name  = "/networking/${var.environment}/data/private_subnet_ids"
+  type  = "StringList"
+  value = join(",", module.vpc.private_subnet_ids)
+}
+
+resource "aws_ssm_parameter" "indexer_security_group_id" {
+  name  = "/networking/${var.environment}/data/indexer_security_group_id"
+  type  = "String"
+  value = aws_security_group.indexer.id
+}
+
+resource "aws_ssm_parameter" "vpc_id" {
+  name  = "/networking/${var.environment}/data/vpc_id"
+  type  = "String"
+  value = module.vpc.vpc_id
+}
