@@ -64,30 +64,30 @@ resource "aws_vpc_security_group_egress_rule" "nat_to_internet" {
   }
 }
 
-# resource "aws_security_group" "indexer" {
-#   name        = "${var.name}-indexer"
-#   description = "Egress for the indexer Lambda"
-#   vpc_id      = var.vpc_id
+resource "aws_security_group" "indexer" {
+  name        = "${var.name}-indexer"
+  description = "Egress for the indexer Lambda"
+  vpc_id      = var.vpc_id
 
-#   egress {
-#     description     = "HTTPS to S3"
-#     protocol        = "tcp"
-#     from_port       = 443
-#     to_port         = 443
-#     prefix_list_ids = [data.aws_prefix_list.s3.id]
-#   }
+  egress {
+    description     = "HTTPS to S3"
+    protocol        = "tcp"
+    from_port       = 443
+    to_port         = 443
+    prefix_list_ids = [var.s3_bucket_id]
+  }
 
-#   egress {
-#     description     = "HTTPS to DynamoDB"
-#     protocol        = "tcp"
-#     from_port       = 443
-#     to_port         = 443
-#     prefix_list_ids = [data.aws_prefix_list.dynamodb.id]
-#   }
+  egress {
+    description     = "HTTPS to DynamoDB"
+    protocol        = "tcp"
+    from_port       = 443
+    to_port         = 443
+    prefix_list_ids = [var.dynamodb_table_id]
+  }
 
-#   tags = {
-#     Name        = "${var.name}-indexer"
-#     Environment = var.environment
-#     ManagedBy   = "Terraform"
-#   }
-# }
+  tags = {
+    Name        = "${var.name}-indexer"
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+  }
+}

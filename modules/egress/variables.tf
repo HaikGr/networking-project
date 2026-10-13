@@ -42,3 +42,13 @@ variable "admin_cidr" {
   type        = string
   description = "Trusted public IP CIDR allowed to SSH to the NAT instance."
 }
+
+variable "dynamodb_table_id" {
+    type = string
+    description = "table id"
+}
+
+variable "s3_bucket_id" {
+    type = string
+    description = "s3 id"
+}

@@ -6,6 +6,14 @@ data "aws_ssm_parameter" "dynamodb_table_arn" {
   name = "/networking/dev/data/dynamodb-table-arn"
 }
 
+data "aws_ssm_parameter" "s3_bucket_id" {
+    name = "/networking/dev/data/s3-bucket-id"
+}
+
+data "aws_ssm_parameter" "dynamodb_table_id" {
+    name = "/networking/dev/data/dynamodb-table-id"
+}
+
 module "network" {
     source = "./modules/vpc"
 
@@ -27,6 +35,8 @@ module "egress" {
     private_subnet_cidr = module.network.private_subnet_cidr
     vpc_id = module.network.vpc_id
     public_subnet_id = module.network.public_subnet_id
+    dynamodb_table_id = data.aws_ssm_parameter.dynamodb_table_id
+    s3_bucket_id = data.aws_ssm_parameter.s3_bucket_id
 
     key_name = "nat-instance-key"
     admin_cidr = "178.160.196.42/32"
