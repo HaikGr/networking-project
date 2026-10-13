@@ -1,3 +1,13 @@
+data "aws_region" "current" {}
+
+data "aws_prefix_list" "s3" {
+  name = "com.amazonaws.${data.aws_region.current.name}.s3"
+}
+
+data "aws_prefix_list" "dynamodb" {
+  name = "com.amazonaws.${data.aws_region.current.name}.dynamodb"
+}
+
 resource "aws_security_group" "nat_instance" {
   name        = "${var.name}-sg"
   description = "Security group for NAT instance"
