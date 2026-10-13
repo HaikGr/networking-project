@@ -52,3 +52,14 @@ variable "s3_bucket_id" {
     type = string
     description = "s3 id"
 }
+
+variable "private_subnet_id" {
+    type = string
+    description = "subnet id private"
+}
+
+variable "deny_ephemeral_returns" {
+  description = "Temporary N4 experiment: block TCP return traffic"
+  type        = bool
+  default     = true
+}

@@ -39,6 +39,7 @@ module "egress" {
     public_subnet_id = module.network.public_subnet_id
     dynamodb_table_id = data.aws_ssm_parameter.dynamodb_table_id.value
     s3_bucket_id = data.aws_ssm_parameter.s3_bucket_id.value
+    private_subnet_id = module.network.private_subnet_id
 
     key_name = "nat-instance-key"
     admin_cidr = "178.160.196.42/32"

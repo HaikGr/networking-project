@@ -107,3 +107,46 @@ resource "aws_ssm_parameter" "sg_indexer_id" {
   type  = "String"
   value = aws_security_group.indexer.id
 }
+
+
+##############
+
+resource "aws_network_acl" "lambda_test" {
+  vpc_id     = aws_vpc.main.id
+  subnet_ids = [var.private_subnet_id]
+
+  # Rule 100: block Lambda's TCP return traffic during the experiment.
+  ingress {
+    rule_no    = 100
+    protocol   = "tcp"
+    action     = var.deny_ephemeral_returns ? "deny" : "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 1024
+    to_port    = 65535
+  }
+
+  # Rule 110: allow all other inbound IPv4 traffic.
+  ingress {
+    rule_no    = 110
+    protocol   = "-1"
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 0
+    to_port    = 0
+  }
+
+  # Leave outbound traffic permitted so the experiment isolates
+  # the inbound return-traffic failure.
+  egress {
+    rule_no    = 100
+    protocol   = "-1"
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 0
+    to_port    = 0
+  }
+
+  tags = {
+    Name = "${var.name}-lambda-n4-test"
+  }
+}
