@@ -171,4 +171,7 @@ resource "aws_flow_log" "vpc" {
   log_destination           = aws_cloudwatch_log_group.vpc_flow_logs.arn
   iam_role_arn              = aws_iam_role.iam_for_vpc.arn
   max_aggregation_interval  = 60
+  depends_on = [
+    aws_iam_role_policy_attachment.vpc_logs
+  ]
 }
