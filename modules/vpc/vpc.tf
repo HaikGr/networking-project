@@ -112,3 +112,54 @@ resource "aws_ssm_parameter" "vpc_id" {
   type  = "String"
   value = aws_vpc.main.id
 }
+
+###################
+
+data "aws_iam_policy_document" "vpc_logging" {
+  statement {
+    effect = "Allow"
+
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
+      "logs:DescribeLogGroups",
+      "logs:DescribeLogStreams"
+    ]
+
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_policy" "vpc_logging" {
+  name   = "${var.name}-vpc-flow-logs-policy"
+  policy = data.aws_iam_policy_document.vpc_logging.json
+}
+
+resource "aws_iam_role" "iam_for_vpc" {
+  name               = "${var.name}-vpc-flow-logs-role"
+  assume_role_policy = data.aws_iam_policy_document.assume_role_vpc.json
+}
+
+resource "aws_iam_role_policy_attachment" "vpc_logs" {
+  role       = aws_iam_role.iam_for_vpc.name
+  policy_arn = aws_iam_policy.vpc_logging.arn
+}
+
+resource "aws_cloudwatch_log_group" "vpc_flow_logs" {
+  name              = "/aws/vpc/${var.name}/flow-logs"
+  retention_in_days = 7
+}
+
+resource "aws_flow_log" "vpc" {
+  vpc_id                   = aws_vpc.main.id
+  traffic_type             = "ALL"
+  log_destination_type     = "cloud-watch-logs"
+  log_destination          = aws_cloudwatch_log_group.vpc_flow_logs.arn
+  iam_role_arn             = aws_iam_role.iam_for_vpc.arn
+  max_aggregation_interval = 60
+
+  depends_on = [
+    aws_iam_role_policy_attachment.vpc_logs
+  ]
+}
