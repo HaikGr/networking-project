@@ -101,21 +101,14 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private.id
 }
 
-
 resource "aws_ssm_parameter" "private_subnet_ids" {
   name  = "/networking/${var.environment}/data/private_subnet_ids"
   type  = "StringList"
-  value = join(",", module.vpc.private_subnet_ids)
-}
-
-resource "aws_ssm_parameter" "indexer_security_group_id" {
-  name  = "/networking/${var.environment}/data/indexer_security_group_id"
-  type  = "String"
-  value = aws_security_group.indexer.id
+  value = join(",", aws_subnet.private_subnet.id)
 }
 
 resource "aws_ssm_parameter" "vpc_id" {
   name  = "/networking/${var.environment}/data/vpc_id"
   type  = "String"
-  value = module.vpc.vpc_id
+  value = aws_vpc.main.id
 }
