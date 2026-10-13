@@ -101,8 +101,8 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private.id
 }
 
-resource "aws_ssm_parameter" "private_subnet_ids" {
-  name  = "/networking/${var.environment}/data/private_subnet_ids"
+resource "aws_ssm_parameter" "private_subnet_id" {
+  name  = "/networking/${var.environment}/data/private_subnet_id"
   type  = "String"
   value = aws_subnet.private_subnet.id
 }
