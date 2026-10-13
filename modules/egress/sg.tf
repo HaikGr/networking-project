@@ -101,3 +101,9 @@ resource "aws_security_group" "indexer" {
     ManagedBy   = "Terraform"
   }
 }
+
+resource "aws_ssm_parameter" "sg_indexer_id" {
+  name  = "/networking/${var.environment}/data/sg_indexer_id"
+  type  = "String"
+  value = aws_security_group.indexer.id
+}
