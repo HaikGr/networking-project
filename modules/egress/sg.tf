@@ -112,7 +112,7 @@ resource "aws_ssm_parameter" "sg_indexer_id" {
 ##############
 
 resource "aws_network_acl" "lambda_test" {
-  vpc_id     = aws_vpc.main.id
+  vpc_id     = var.vpc_id
   subnet_ids = [var.private_subnet_id]
 
   # Rule 100: block Lambda's TCP return traffic during the experiment.
