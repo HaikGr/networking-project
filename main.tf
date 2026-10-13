@@ -1,12 +1,4 @@
-data "aws_region" "current" {}
 
-data "aws_prefix_list" "s3" {
-  name = "com.amazonaws.${data.aws_region.current.name}.s3"
-}
-
-data "aws_prefix_list" "dynamodb" {
-  name = "com.amazonaws.${data.aws_region.current.name}.dynamodb"
-}
 
 data "aws_ssm_parameter" "s3_bucket_arn" {
   name = "/networking/dev/data/s3-bucket-arn"
@@ -45,8 +37,8 @@ module "egress" {
     private_subnet_cidr = module.network.private_subnet_cidr
     vpc_id = module.network.vpc_id
     public_subnet_id = module.network.public_subnet_id
-    dynamodb_table_id = data.aws_ssm_parameter.dynamodb_table_id
-    s3_bucket_id = data.aws_ssm_parameter.s3_bucket_id
+    dynamodb_table_id = data.aws_ssm_parameter.dynamodb_table_id.value
+    s3_bucket_id = data.aws_ssm_parameter.s3_bucket_id.value
 
     key_name = "nat-instance-key"
     admin_cidr = "178.160.196.42/32"
