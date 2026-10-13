@@ -115,6 +115,19 @@ resource "aws_ssm_parameter" "vpc_id" {
 
 ###################
 
+data "aws_iam_policy_document" "assume_role_vpc" {
+  statement {
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["vpc-flow-logs.amazonaws.com"]
+    }
+
+    actions = ["sts:AssumeRole"]
+  }
+}
+
 data "aws_iam_policy_document" "vpc_logging" {
   statement {
     effect = "Allow"
@@ -153,13 +166,9 @@ resource "aws_cloudwatch_log_group" "vpc_flow_logs" {
 
 resource "aws_flow_log" "vpc" {
   vpc_id                   = aws_vpc.main.id
-  traffic_type             = "ALL"
-  log_destination_type     = "cloud-watch-logs"
-  log_destination          = aws_cloudwatch_log_group.vpc_flow_logs.arn
-  iam_role_arn             = aws_iam_role.iam_for_vpc.arn
-  max_aggregation_interval = 60
-
-  depends_on = [
-    aws_iam_role_policy_attachment.vpc_logs
-  ]
+  traffic_type              = "ALL"
+  log_destination_type      = "cloud-watch-logs"
+  log_destination           = aws_cloudwatch_log_group.vpc_flow_logs.arn
+  iam_role_arn              = aws_iam_role.vpc_flow_logs.arn
+  max_aggregation_interval  = 60
 }
